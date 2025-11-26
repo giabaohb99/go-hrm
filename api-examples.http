@@ -1,0 +1,75 @@
+# API Examples for Go HRM Services
+
+### Variables
+@baseUrl = http://localhost
+@userService = {{baseUrl}}:8081
+@companyService = {{baseUrl}}:8082
+@employeeService = {{baseUrl}}:8083
+
+### User Service - Login
+POST {{userService}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "john@example.com",
+  "password": "password123",
+  "hostname": "example.com",
+  "platform": "web",
+  "version": "1.0.0",
+  "internalid": ""
+}
+
+### User Service - Refresh Token
+POST {{userService}}/api/v1/auth/refresh
+Content-Type: application/json
+
+{
+  "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+
+### User Service - Logout
+POST {{userService}}/api/v1/auth/logout
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+### User Service - Health Check
+GET {{userService}}/health
+
+### Company Service - Create Company
+POST {{companyService}}/api/v1/companies
+Content-Type: application/json
+
+{
+  "domain": "example.com",
+  "name": "Example Corporation",
+  "owner_id": 1
+}
+
+### Company Service - Get Company by Domain
+GET {{companyService}}/api/v1/companies?domain=example.com
+
+### Company Service - Get Company by ID
+GET {{companyService}}/api/v1/companies/1
+
+### Company Service - Health Check
+GET {{companyService}}/health
+
+### Employee Service - Create Employee
+POST {{employeeService}}/api/v1/employees
+Content-Type: application/json
+
+{
+  "company_id": 1,
+  "user_id": 1,
+  "internal_id": "EMP001",
+  "email": "john@example.com"
+}
+
+### Employee Service - Get Employee by User ID
+GET {{employeeService}}/api/v1/users/1/employee
+
+### Employee Service - Get Employees by Company
+GET {{employeeService}}/api/v1/companies/1/employees?page=1&limit=10
+
+### Employee Service - Health Check
+GET {{employeeService}}/health

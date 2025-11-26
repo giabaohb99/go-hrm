@@ -1,0 +1,552 @@
+openapi: 3.0.0
+info:
+  title: Go HRM Microservices API
+  description: API documentation for Go HRM system with microservices architecture
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: support@example.com
+
+servers:
+  - url: http://localhost:8081
+    description: User Service
+  - url: http://localhost:8082
+    description: Company Service
+  - url: http://localhost:8083
+    description: Employee Service
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        fullname:
+          type: string
+        email:
+          type: string
+        status:
+          type: integer
+        datelastlogin:
+          type: integer
+    
+    Company:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        domain:
+          type: string
+        owner:
+          type: integer
+        status:
+          type: integer
+    
+    Employee:
+      type: object
+      properties:
+        id:
+          type: integer
+        internal_id:
+          type: string
+        email:
+          type: string
+        status:
+          type: integer
+        user_id:
+          type: integer
+        company_id:
+          type: integer
+    
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+        - hostname
+        - platform
+        - version
+      properties:
+        email:
+          type: string
+          format: email
+          example: "admin@gmail.com"
+        password:
+          type: string
+          example: "admin123"
+        hostname:
+          type: string
+          example: "local.localhost"
+        platform:
+          type: string
+          example: "web"
+        version:
+          type: string
+          example: "1.0.0"
+        internalid:
+          type: string
+          description: "Optional internal ID"
+    
+    LoginResponse:
+      type: object
+      properties:
+        jwt:
+          type: string
+        refresh_token:
+          type: string
+        expires_at:
+          type: integer
+        user:
+          $ref: '#/components/schemas/User'
+        company:
+          $ref: '#/components/schemas/Company'
+        employee:
+          $ref: '#/components/schemas/Employee'
+        role:
+          type: string
+    
+    CreateCompanyRequest:
+      type: object
+      required:
+        - name
+        - domain
+      properties:
+        name:
+          type: string
+        domain:
+          type: string
+        owner:
+          type: integer
+    
+    CreateEmployeeRequest:
+      type: object
+      required:
+        - internal_id
+        - email
+        - user_id
+        - company_id
+      properties:
+        internal_id:
+          type: string
+        email:
+          type: string
+        user_id:
+          type: integer
+        company_id:
+          type: integer
+    
+    RefreshTokenRequest:
+      type: object
+      required:
+        - refresh_token
+      properties:
+        refresh_token:
+          type: string
+          description: "Refresh token received from login"
+    
+    RefreshTokenResponse:
+      type: object
+      properties:
+        jwt:
+          type: string
+        refresh_token:
+          type: string
+        expires_at:
+          type: integer
+
+paths:
+  # User Service Endpoints
+  /api/v1/auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: User login
+      description: Authenticate user and return JWT tokens
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '400':
+          description: Invalid request
+        '401':
+          description: Invalid credentials
+
+  /api/v1/auth/logout:
+    post:
+      tags:
+        - Authentication
+      summary: User logout
+      description: Logout user and invalidate session
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Logout successful
+        '401':
+          description: Unauthorized
+
+  /api/v1/auth/refresh:
+    post:
+      tags:
+        - Authentication
+      summary: Refresh access token
+      description: Get new access token using refresh token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshTokenRequest'
+      responses:
+        '200':
+          description: Token refreshed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefreshTokenResponse'
+        '401':
+          description: Invalid refresh token
+
+  /api/v1/users/profile:
+    get:
+      tags:
+        - User Management
+      summary: Get user profile
+      description: Get current user profile information
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Profile retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          description: Unauthorized
+
+    put:
+      tags:
+        - User Management
+      summary: Update user profile
+      description: Update current user profile information
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+      responses:
+        '200':
+          description: Profile updated successfully
+        '400':
+          description: Invalid request
+        '401':
+          description: Unauthorized
+
+  # Company Service Endpoints
+  /api/v1/companies:
+    post:
+      tags:
+        - Company Management
+      summary: Create new company
+      description: Create a new company
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCompanyRequest'
+      responses:
+        '201':
+          description: Company created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Company'
+        '400':
+          description: Invalid request
+
+    get:
+      tags:
+        - Company Management
+      summary: List companies or get by domain
+      description: Get list of companies with pagination or filter by domain
+      parameters:
+        - name: domain
+          in: query
+          description: Filter by company domain
+          schema:
+            type: string
+        - name: page
+          in: query
+          description: Page number for pagination
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          description: Number of items per page
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '200':
+          description: Companies retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Company'
+
+  /api/v1/companies/{id}:
+    get:
+      tags:
+        - Company Management
+      summary: Get company by ID
+      description: Get company information by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Company ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Company retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Company'
+        '404':
+          description: Company not found
+
+    put:
+      tags:
+        - Company Management
+      summary: Update company
+      description: Update company information
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Company ID
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Company'
+      responses:
+        '200':
+          description: Company updated successfully
+        '400':
+          description: Invalid request
+        '404':
+          description: Company not found
+
+    delete:
+      tags:
+        - Company Management
+      summary: Delete company
+      description: Delete company by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Company ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Company deleted successfully
+        '404':
+          description: Company not found
+
+  # Employee Service Endpoints
+  /api/v1/employees:
+    post:
+      tags:
+        - Employee Management
+      summary: Create new employee
+      description: Create a new employee
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateEmployeeRequest'
+      responses:
+        '201':
+          description: Employee created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Employee'
+        '400':
+          description: Invalid request
+
+  /api/v1/employees/{id}:
+    get:
+      tags:
+        - Employee Management
+      summary: Get employee by ID
+      description: Get employee information by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Employee ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Employee retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Employee'
+        '404':
+          description: Employee not found
+
+    put:
+      tags:
+        - Employee Management
+      summary: Update employee
+      description: Update employee information
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Employee ID
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Employee'
+      responses:
+        '200':
+          description: Employee updated successfully
+        '400':
+          description: Invalid request
+        '404':
+          description: Employee not found
+
+    delete:
+      tags:
+        - Employee Management
+      summary: Delete employee
+      description: Delete employee by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Employee ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Employee deleted successfully
+        '404':
+          description: Employee not found
+
+  /api/v1/users/{userId}/employee:
+    get:
+      tags:
+        - Employee Management
+      summary: Get employee by user ID
+      description: Get employee information by user ID
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          description: User ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Employee retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Employee'
+        '404':
+          description: Employee not found
+
+  /api/v1/companies/{companyId}/employees:
+    get:
+      tags:
+        - Employee Management
+      summary: Get employees by company ID
+      description: Get list of employees in a company
+      parameters:
+        - name: companyId
+          in: path
+          required: true
+          description: Company ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Employees retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Employee'
+
+  # Health Check Endpoints
+  /health:
+    get:
+      tags:
+        - Health Check
+      summary: Service health check
+      description: Check if the service is running
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  service:
+                    type: string
+                    example: user-service

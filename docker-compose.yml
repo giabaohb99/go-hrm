@@ -1,0 +1,118 @@
+services:
+  mysql:
+    image: mysql:8.0
+    platform: linux/amd64
+    container_name: go-hrm-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: go_hrm
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./migrations:/docker-entrypoint-initdb.d
+    command: --default-authentication-plugin=mysql_native_password
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot"]
+      timeout: 20s
+      retries: 10
+      interval: 10s
+      start_period: 40s
+    networks:
+      - hrm-network
+
+  user-service:
+    build:
+      context: .
+      dockerfile: ./services/user-service/Dockerfile
+    container_name: go-hrm-user-service
+    environment:
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_USER=root
+      - DB_PASSWORD=root
+      - DB_NAME=go_hrm
+      - JWT_SECRET=your_super_secret_key_change_me
+      - PORT=8081
+    ports:
+      - "8081:8081"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - hrm-network
+    restart: on-failure
+
+  company-service:
+    build:
+      context: .
+      dockerfile: ./services/company-service/Dockerfile
+    container_name: go-hrm-company-service
+    environment:
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_USER=root
+      - DB_PASSWORD=root
+      - DB_NAME=go_hrm
+      - PORT=8082
+    ports:
+      - "8082:8082"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - hrm-network
+    restart: on-failure
+
+  employee-service:
+    build:
+      context: .
+      dockerfile: ./services/employee-service/Dockerfile
+    container_name: go-hrm-employee-service
+    environment:
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_USER=root
+      - DB_PASSWORD=root
+      - DB_NAME=go_hrm
+      - PORT=8083
+    ports:
+      - "8083:8083"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - hrm-network
+    restart: on-failure
+
+  adminer:
+    image: adminer:latest
+    container_name: go-hrm-adminer
+    ports:
+      - "8080:8080"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - hrm-network
+    environment:
+      - ADMINER_DEFAULT_SERVER=mysql
+
+  swagger-ui:
+    image: swaggerapi/swagger-ui:latest
+    container_name: go-hrm-swagger-ui
+    ports:
+      - "8090:8080"
+    environment:
+      - SWAGGER_JSON=/docs/swagger.yaml
+    volumes:
+      - ./docs:/docs
+    networks:
+      - hrm-network
+
+volumes:
+  mysql_data:
+
+networks:
+  hrm-network:
+    driver: bridge
